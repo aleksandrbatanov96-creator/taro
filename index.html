@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Таро вдвоём</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--gold:#e8c46a;--gold2:#b8862f;--ink:#f4ead2;--muted:#cbb9ec;--card:#2a1648;--line:rgba(232,196,106,.35)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif}
+body{background:radial-gradient(ellipse at 50% 0%,#2b1450 0%,#170a2b 45%,#07030f 100%) fixed;background-color:#0b0418;overflow-x:hidden}
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0}
+#stars i{position:absolute;border-radius:50%;background:#fff;opacity:.2;animation:tw 4s ease-in-out infinite}
+@keyframes tw{50%{opacity:.85}}
+#snow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+main{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:16px 16px calc(28px + env(safe-area-inset-bottom))}
+h1{margin:6px 0 2px;text-align:center;color:var(--gold);font-size:26px;letter-spacing:.06em;text-shadow:0 0 18px rgba(232,196,106,.45)}
+.lead{text-align:center;color:var(--muted);margin:0 0 18px;font-size:14px}
+.screen{display:none;animation:fade .35s}
+.screen.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}}
+
+/* меню */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:linear-gradient(160deg,rgba(60,28,100,.85),rgba(28,12,50,.85));border:1px solid var(--line);border-radius:16px;padding:16px 12px;text-align:center;cursor:pointer;color:var(--ink);font:inherit;transition:transform .15s}
+.tile:active{transform:scale(.97)}
+.tile .ic{font-size:30px;display:block;margin-bottom:6px}
+.tile b{display:block;font-size:15px}
+.tile small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.tile.wide{grid-column:1/3}
+.links{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.btn{display:block;width:100%;text-align:center;border-radius:14px;padding:13px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;text-decoration:none;
+  color:#1d0d33;background:linear-gradient(180deg,#e9c66e,#b8862f);border:0}
+.btn.ghost{background:transparent;color:var(--gold);border:1px solid var(--line)}
+.btn:active{transform:scale(.98)}
+.note{text-align:center;color:var(--muted);font-size:12px;margin-top:18px;opacity:.8}
+
+/* экран расклада */
+.top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.back{background:transparent;border:1px solid var(--line);color:var(--gold);border-radius:12px;padding:7px 12px;font:inherit;cursor:pointer}
+.ttl{flex:1;text-align:center;font-weight:800;color:var(--gold);font-size:18px;margin-right:52px}
+.q{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--ink);font:inherit;font-size:15px;margin:4px 0 10px}
+.q::placeholder{color:#9d8cc0}
+.hint{text-align:center;color:var(--muted);font-size:13px;margin:6px 0 12px;min-height:1.2em}
+.cards{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:8px 0 14px;--w:30vw}
+.cards.n1{--w:min(52vw,230px)}
+.cards.n2{--w:min(38vw,170px)}
+.cards.n3{--w:min(28vw,140px)}
+.cards.n6{--w:min(27vw,130px)}
+.slot{display:flex;flex-direction:column;align-items:center;gap:5px;width:var(--w)}
+.pos{font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;text-align:center;min-height:2.4em;display:flex;align-items:flex-end;line-height:1.2}
+.card{width:var(--w);aspect-ratio:7/12;perspective:1000px;cursor:pointer}
+.inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .9s cubic-bezier(.2,.8,.2,1)}
+.card.open .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:calc(var(--w)*.08);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.back-f{background:radial-gradient(circle,rgba(232,196,106,.25) 0 18%,transparent 19%),repeating-conic-gradient(#3a1b66 0 10deg,#2a1150 10deg 20deg);
+  border:calc(var(--w)*.03) solid var(--gold2);display:grid;place-items:center;color:var(--gold);font-size:calc(var(--w)*.2);text-shadow:0 0 14px rgba(232,196,106,.8)}
+.card:not(.open) .back-f{animation:glow 2.4s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 0 22px rgba(232,196,106,.55)}}
+.front{transform:rotateY(180deg);background:linear-gradient(160deg,#fbf3df,#ead6a8);border:calc(var(--w)*.03) solid var(--gold2);color:#2a1640}
+.front.major{background:linear-gradient(160deg,#fff4dc,#e9cf95 60%,#d9b56b)}
+.art{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10% 6%}
+.art.rev{transform:rotate(180deg)}
+.corner{font-family:Georgia,serif;font-weight:700;color:#5a2a92;font-size:calc(var(--w)*.11)}
+.sym{font-size:calc(var(--w)*.42);line-height:1}
+.pips{display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:3%;width:88%;flex:1;font-size:calc(var(--w)*.13)}
+.cname{font-family:Georgia,serif;font-weight:700;text-align:center;color:#5a2a92;font-size:calc(var(--w)*.085);line-height:1.15}
+
+/* расшифровка */
+.reading{display:flex;flex-direction:column;gap:10px}
+.item{background:rgba(20,9,38,.75);border:1px solid var(--line);border-radius:14px;padding:12px 14px;animation:fade .5s}
+.item .h{font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:.05em}
+.item .n{font-weight:800;font-size:16px;margin:3px 0}
+.item .n .rv{font-size:11px;font-weight:600;color:#ffd5df;background:rgba(200,60,90,.35);border-radius:10px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.item .t{font-size:14px;line-height:1.4;color:#efe6ff}
+.verdict{text-align:center;font-size:44px;font-weight:900;letter-spacing:.06em;margin:4px 0 8px;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+.verdict.yes{color:#ffe28a;text-shadow:0 0 24px rgba(255,210,90,.8)}
+.verdict.no{color:#ff8fa8;text-shadow:0 0 24px rgba(255,80,120,.7)}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+.sum{background:rgba(232,196,106,.1);border:1px dashed var(--line);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.5}
+
+/* нумерология и совместимость */
+label.f{display:block;font-size:13px;color:var(--muted);margin:6px 0 4px}
+input[type=date]{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--ink);font:inherit;font-size:16px;color-scheme:dark}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.nt{background:rgba(20,9,38,.75);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:center}
+.nt .l{font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.06em}
+.nt .v{font-family:Georgia,serif;font-size:40px;font-weight:700;color:#ffe28a;text-shadow:0 0 18px rgba(255,210,90,.5)}
+.nt .s{font-weight:700;font-size:14px}
+.nt .d{font-size:12px;color:#e9dcff;margin-top:3px;line-height:1.35}
+.zod{text-align:center;font-size:16px;margin:4px 0;color:#ffe9b0}
+.meter{margin:14px 0}
+.pct{text-align:center;font-family:Georgia,serif;font-size:52px;font-weight:700;color:#ffe28a;text-shadow:0 0 22px rgba(255,140,170,.7)}
+.bar{height:16px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#ff5d8f,#ffa36b,#ffe28a);transition:width 2.4s cubic-bezier(.2,.8,.2,1)}
+.vt{text-align:center;font-weight:800;margin-top:8px;font-size:17px}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<canvas id="snow"></canvas>
+<main>
+  <!-- ГЛАВНАЯ -->
+  <section class="screen on" id="home">
+    <h1>☾✦☽ ТАРО ВДВОЁМ</h1>
+    <p class="lead" id="hello">Выбери расклад — карты ждут тебя</p>
+    <div class="grid">
+      <button class="tile wide" data-go="day"><span class="ic">🌅</span><b>Карта дня</b><small>одна подсказка на весь день</small></button>
+      <button class="tile" data-go="yesno"><span class="ic">🎱</span><b>Да или нет</b><small>быстрый ответ</small></button>
+      <button class="tile" data-go="three"><span class="ic">🔮</span><b>3 карты</b><small>прошлое · настоящее · будущее</small></button>
+      <button class="tile" data-go="love"><span class="ic">💞</span><b>Отношения</b><small>ты, он(а) и пара</small></button>
+      <button class="tile" data-go="year"><span class="ic">🎄</span><b id="yearTile">Мой год</b><small>6 карт на год</small></button>
+      <button class="tile" data-go="num"><span class="ic">🔢</span><b>Нумерология</b><small>по дате рождения</small></button>
+      <button class="tile" data-go="compat"><span class="ic">💘</span><b>Совместимость</b><small>по двум датам</small></button>
+    </div>
+    <div class="links" id="links"></div>
+    <p class="note">Расклады — для развлечения и самопознания 🌙</p>
+  </section>
+
+  <!-- РАСКЛАД -->
+  <section class="screen" id="spread">
+    <div class="top"><button class="back">← Назад</button><div class="ttl" id="sTitle"></div></div>
+    <input class="q" id="sQ" maxlength="200" placeholder="Напиши свой вопрос (можно без него)">
+    <div class="hint" id="sHint"></div>
+    <div class="cards" id="sCards"></div>
+    <div class="reading" id="sRead"></div>
+    <div class="links"><button class="btn" id="sAgain">🔀 Новый расклад</button></div>
+  </section>
+
+  <!-- НУМЕРОЛОГИЯ -->
+  <section class="screen" id="num">
+    <div class="top"><button class="back">← Назад</button><div class="ttl">🔢 Нумерология</div></div>
+    <label class="f">Дата рождения</label>
+    <input type="date" id="nDate">
+    <div class="links"><button class="btn" id="nGo">Рассчитать</button></div>
+    <div id="nOut"></div>
+  </section>
+
+  <!-- СОВМЕСТИМОСТЬ -->
+  <section class="screen" id="compat">
+    <div class="top"><button class="back">← Назад</button><div class="ttl">💘 Совместимость</div></div>
+    <label class="f">Твоя дата рождения</label><input type="date" id="cD1">
+    <label class="f">Дата рождения партнёра</label><input type="date" id="cD2">
+    <div class="links"><button class="btn" id="cGo">Проверить</button></div>
+    <div id="cOut"></div>
+  </section>
+</main>
+
+<script>
+// ======== НАСТРОЙКИ: ссылки на канал и личный разбор (оставьте пустыми, чтобы скрыть кнопку) ========
+const CHANNEL_URL = '';            // например 'https://t.me/ваш_канал'
+const CONTACT_URL = '';            // например 'https://t.me/ваш_ник'
+
+// ======== Telegram ========
+const TG = window.Telegram && Telegram.WebApp && Telegram.WebApp.initData !== undefined ? Telegram.WebApp : null;
+if (TG) { try { TG.ready(); TG.expand(); TG.setHeaderColor('#170a2b'); TG.setBackgroundColor('#0b0418'); } catch (e) {} }
+const haptic = t => { try { TG && TG.HapticFeedback.impactOccurred(t || 'light'); } catch (e) {} };
+const user = TG && TG.initDataUnsafe && TG.initDataUnsafe.user;
+const $ = s => document.querySelector(s);
+
+// ======== колода ========
+const ROMAN=['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+const MAJORS=[
+ ['Шут','🃏','Новое начало, свобода, смелый шаг в неизвестность','Безрассудство, лишний риск, наивность'],
+ ['Маг','🪄','Сила воли, мастерство — у тебя есть всё, чтобы действовать','Манипуляции, нераскрытый потенциал'],
+ ['Верховная Жрица','🌙','Интуиция, тайна — доверься внутреннему голосу','Скрытые мотивы, ты игнорируешь интуицию'],
+ ['Императрица','🌸','Изобилие, забота, расцвет','Застой, гиперопека, зависимость'],
+ ['Император','👑','Стабильность, структура, сильная позиция','Контроль, жёсткость, упрямство'],
+ ['Иерофант','📜','Традиции, наставник, верный путь','Бунт против правил, свой путь'],
+ ['Влюблённые','💞','Любовь, гармония, важный выбор сердцем','Разлад, неверный выбор, сомнения'],
+ ['Колесница','🏇','Победа, движение вперёд, решимость','Потеря контроля, препятствия'],
+ ['Сила','🦁','Внутренняя сила, терпение, мягкая власть','Неуверенность, страх, слабость'],
+ ['Отшельник','🏮','Поиск себя, мудрость, время побыть одному','Одиночество, изоляция'],
+ ['Колесо Фортуны','🎡','Поворот судьбы, удача, перемены к лучшему','Неудачный период, сопротивление переменам'],
+ ['Справедливость','⚖️','Правда, баланс, всё вернётся по карме','Несправедливость, уход от ответственности'],
+ ['Повешенный','🙃','Пауза, взгляд под новым углом','Застревание, бессмысленные жертвы'],
+ ['Смерть','🦋','Трансформация, конец одного этапа и начало нового','Страх перемен, цепляние за прошлое'],
+ ['Умеренность','⏳','Баланс, терпение, всё придёт вовремя','Крайности, спешка, дисбаланс'],
+ ['Дьявол','😈','Искушение, страсть, сильная привязанность','Освобождение, разрыв оков'],
+ ['Башня','⚡','Внезапные перемены, крушение иллюзий','Перемены удалось смягчить, страх потрясений'],
+ ['Звезда','⭐','Надежда, вдохновение, исцеление','Разочарование, потеря веры'],
+ ['Луна','🌕','Иллюзии, страхи, не всё так, как кажется','Туман рассеивается, правда всплывает'],
+ ['Солнце','☀️','Радость, успех, всё будет хорошо','Временные трудности, излишний оптимизм'],
+ ['Суд','📯','Пробуждение, итоги, второй шанс','Самокритика, сомнения, страх решения'],
+ ['Мир','🌍','Завершение, гармония, цель достигнута','Незавершённость, задержки'],
+];
+const RANKS=['Туз','Двойка','Тройка','Четвёрка','Пятёрка','Шестёрка','Семёрка','Восьмёрка','Девятка','Десятка','Паж','Рыцарь','Королева','Король'];
+const COURT=['🧒','🐎','👸','🤴'];
+const SUITS=[
+ {gen:'Жезлов',sym:'🔥',key:'wands',cards:[['Новый проект, вдохновение, искра','Задержки, нет энергии начать'],['Планы, выбор пути','Страх неизвестности'],['Расширение, первые результаты','Планы буксуют'],['Праздник, дом, стабильность','Нестабильность, ссоры дома'],['Конкуренция, споры','Избегание конфликта'],['Победа, признание','Недооценённость, гордыня'],['Отстаивай свою позицию','Усталость, желание сдаться'],['Быстрые новости, всё ускоряется','Задержки, суета'],['Стойкость, последний рывок','Истощение, подозрительность'],['Перегрузка, тяжёлая ответственность','Пора сбросить лишний груз'],['Хорошие новости, энтузиазм','Плохие новости, нерешительность'],['Страсть, действие, приключения','Импульсивность, спешка'],['Уверенность, харизма','Ревность, неуверенность'],['Лидерство, большие планы','Властность, высокомерие']]},
+ {gen:'Кубков',sym:'🍷',key:'cups',cards:[['Новые чувства, любовь','Эмоциональная пустота'],['Союз, взаимность','Разлад, дисбаланс в паре'],['Дружба, праздник','Сплетни, излишества'],['Апатия, упущенный шанс','Новый интерес к жизни'],['Потеря, сожаление','Принятие, движение дальше'],['Ностальгия, прошлое возвращается','Жизнь прошлым'],['Иллюзии, слишком много вариантов','Ясность, выбор сделан'],['Уход в поисках большего','Страх уйти'],['Желание исполнится','Неудовлетворённость'],['Семейное счастье, гармония','Разлад в семье'],['Романтичная весточка, мечты','Эмоциональная незрелость'],['Романтика, признание, предложение','Ревность, переменчивость'],['Эмпатия, забота, чуткость','Эмоциональная зависимость'],['Эмоциональная мудрость, спокойствие','Холодность, манипуляции']]},
+ {gen:'Мечей',sym:'⚔️',key:'swords',cards:[['Ясность, истина, прорыв','Путаница, ложь'],['Трудный выбор, тупик','Слишком много информации'],['Боль, разбитое сердце','Исцеление, прощение'],['Отдых, восстановление','Выгорание, беспокойство'],['Конфликт, поражение','Примирение'],['Переход к спокойной жизни','Застревание в проблемах'],['Хитрость, скрытность','Разоблачение, признание'],['Ограничения, страх','Освобождение'],['Тревога, бессонница','Надежда, тревога уходит'],['Конец, дно пройдено','Восстановление, худшее позади'],['Любопытство, новые идеи','Сплетни'],['Напор, быстрые действия','Агрессия, необдуманность'],['Независимость, прямота','Холодность, жёсткость'],['Интеллект, власть истины','Манипуляции, тирания']]},
+ {gen:'Пентаклей',sym:'🪙',key:'pentacles',cards:[['Новые деньги, возможность','Упущенная возможность'],['Баланс, жонглирование делами','Хаос, перегрузка'],['Командная работа, мастерство','Разлад в команде'],['Накопление, контроль','Жадность или лишние траты'],['Трудности, нужда','Восстановление, помощь'],['Щедрость, помощь','Долги, неравенство'],['Терпение, ожидание урожая','Нетерпение, малая отдача'],['Усердие, обучение','Рутина, перфекционизм'],['Независимость, достаток','Зависимость, траты'],['Богатство, семья, наследие','Финансовые потери'],['Новые знания, шанс','Лень, нереальные цели'],['Надёжность, упорный труд','Застой, скука'],['Практичность, уют','Забота в ущерб себе'],['Успех, стабильность','Жадность, материализм']]},
+];
+const DECK=[];
+MAJORS.forEach((m,i)=>DECK.push({name:m[0],sym:m[1],up:m[2],rev:m[3],major:true,num:ROMAN[i]}));
+SUITS.forEach(s=>s.cards.forEach((c,r)=>DECK.push({name:RANKS[r]+' '+s.gen,sym:s.sym,up:c[0],rev:c[1],rank:r,suit:s.key,court:COURT[r-10]})));
+const THEME={wands:'🔥 Больше всего Жезлов — сейчас главное действия, энергия и твои планы.',cups:'🍷 Больше всего Кубков — на первом месте чувства и отношения.',
+  swords:'⚔️ Больше всего Мечей — время ясных решений и честного разговора, в том числе с собой.',pentacles:'🪙 Больше всего Пентаклей — в центре внимания деньги, работа и стабильность.'};
+
+function rng(seed){ // детерминированный генератор (для карты дня)
+  let s=seed>>>0||1;return()=>{s^=s<<13;s>>>=0;s^=s>>17;s^=s<<5;s>>>=0;return s/4294967296};
+}
+const crand=()=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]/4294967296};
+function draw(n,rand=crand,revChance=.3){
+  const pool=DECK.map((_,i)=>i);
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  return pool.slice(0,n).map(i=>({...DECK[i],reversed:rand()<revChance}));
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function artHTML(c){
+  let corner,mid;
+  if(c.major){corner=c.num;mid=`<div class="sym">${c.sym}</div>`}
+  else if(c.rank===0){corner='Туз';mid=`<div class="sym">${c.sym}</div>`}
+  else if(c.rank<10){corner=c.rank+1;mid=`<div class="pips">${Array(c.rank+1).fill(`<span>${c.sym}</span>`).join('')}</div>`}
+  else{corner=c.sym;mid=`<div class="sym">${c.court}</div>`}
+  return `<div class="art${c.reversed?' rev':''}"><div class="corner">${corner}</div>${mid}<div class="cname">${c.name}</div></div>`;
+}
+const cardHTML=(c,label)=>`<div class="slot"><div class="pos">${esc(label)}</div><div class="card"><div class="inner">
+  <div class="face back-f">✦</div><div class="face front${c.major?' major':''}">${artHTML(c)}</div></div></div></div>`;
+
+const targetYear=()=>{const n=new Date();return n.getMonth()>=9?n.getFullYear()+1:n.getFullYear()};
+const Y=targetYear();
+$('#yearTile').textContent='Мой '+Y+' год';
+const SPREADS={
+  day:{title:'🌅 Карта дня',labels:['Твоя карта дня'],noQ:true},
+  yesno:{title:'🎱 Да или нет',labels:['Ответ карт'],yesno:true},
+  three:{title:'🔮 3 карты',labels:['Прошлое','Настоящее','Будущее']},
+  love:{title:'💞 Отношения',labels:['Ты','Он / Она','Ваши отношения']},
+  year:{title:'🎄 Мой '+Y+' год',labels:['Что уходит','Что придёт в '+Y,'Любовь','Деньги и работа','Испытание года','Совет на '+Y]},
+};
+
+// ======== навигация ========
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));
+  window.scrollTo(0,0);
+  if(TG){try{id==='home'?TG.BackButton.hide():TG.BackButton.show()}catch(e){}}
+}
+if(TG){try{TG.BackButton.onClick(()=>show('home'))}catch(e){}}
+document.querySelectorAll('.back').forEach(b=>b.onclick=()=>show('home'));
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{haptic();const g=b.dataset.go;
+  if(g==='num'||g==='compat')show(g);else startSpread(g)});
+
+// ======== расклады ========
+let cur=null;
+function startSpread(key){
+  const sp=SPREADS[key];cur={key,sp};
+  $('#sTitle').textContent=sp.title;
+  $('#sQ').style.display=sp.noQ?'none':'';
+  if(!sp.noQ)$('#sQ').value='';
+  $('#sAgain').style.display=key==='day'?'none':'';
+  let cards;
+  if(key==='day'){ // одна карта на день: зависит от пользователя и даты
+    const id=user?user.id:(()=>{try{let v=localStorage.getItem('taro.uid');if(!v){v=String(Math.floor(crand()*1e9));localStorage.setItem('taro.uid',v)}return +v}catch(e){return 7}})();
+    const d=new Date();cards=draw(1,rng(id*31+d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()));
+  }else cards=draw(sp.labels.length,crand,sp.yesno?.5:.3);
+  cur.cards=cards;cur.opened=0;
+  const box=$('#sCards');box.className='cards n'+cards.length;
+  box.innerHTML=cards.map((c,i)=>cardHTML(c,sp.labels[i])).join('');
+  $('#sRead').innerHTML='';
+  $('#sHint').textContent=cards.length>1?'Нажимай на карты по очереди 👆':'Нажми на карту, чтобы открыть 👆';
+  box.querySelectorAll('.card').forEach((el,i)=>el.onclick=()=>openCard(el,i));
+  show('spread');
+}
+function openCard(el,i){
+  if(el.classList.contains('open'))return;
+  el.classList.add('open');haptic('medium');cur.opened++;
+  const c=cur.cards[i],sp=cur.sp,q=$('#sQ').value.trim();
+  const my=cur;
+  setTimeout(()=>{
+    if(cur!==my)return;           // уже начат новый расклад
+    const r=$('#sRead');
+    cur.shown=(cur.shown||0)+1;
+    if(cur.shown===1&&q&&!sp.noQ){const d=document.createElement('div');d.className='item';d.innerHTML=`<div class="h">Твой вопрос</div><div class="t">❓ ${esc(q)}</div>`;r.appendChild(d)}
+    if(sp.yesno){const v=document.createElement('div');v.className='verdict '+(c.reversed?'no':'yes');v.textContent=c.reversed?'НЕТ':'ДА ✨';r.appendChild(v)}
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML=`<div class="h">${sp.labels.length>1?(i+1)+'. ':''}${esc(sp.labels[i])}</div><div class="n">${c.sym} ${c.name}${c.reversed&&!sp.yesno?'<span class="rv">перевёрнутая</span>':''}</div><div class="t">${c.reversed?c.rev:c.up}</div>`;
+    r.appendChild(d);
+    if(cur.shown===cur.cards.length){$('#sHint').textContent='';summary();try{TG&&TG.HapticFeedback.notificationOccurred('success')}catch(e){}}
+    else $('#sHint').textContent=`Открыто ${cur.shown} из ${cur.cards.length}`;
+  },500);
+}
+function summary(){
+  const cs=cur.cards;if(cs.length<3)return;
+  const tips=[],maj=cs.filter(c=>c.major).length,rev=cs.filter(c=>c.reversed).length;
+  if(maj>=cs.length/2)tips.push('✨ Много Старших арканов — сейчас решается что-то по-настоящему важное.');
+  const su=cs.filter(c=>c.suit).map(c=>c.suit);
+  if(su.length){const top=su.sort((a,b)=>su.filter(x=>x===b).length-su.filter(x=>x===a).length)[0];if(su.filter(x=>x===top).length>=2)tips.push(THEME[top])}
+  if(rev>=Math.max(2,cs.length/2))tips.push('🔄 Много перевёрнутых карт — что-то идёт не так, как хочется. Не торопись.');
+  else if(rev===0)tips.push('🌟 Ни одной перевёрнутой карты — энергия расклада благоприятная.');
+  if(tips.length){const d=document.createElement('div');d.className='sum';d.innerHTML='<b>Итог расклада</b><br>'+tips.join('<br>');$('#sRead').appendChild(d)}
+}
+$('#sAgain').onclick=()=>{haptic();const q=$('#sQ').value;startSpread(cur.key);$('#sQ').value=q};
+
+// ======== нумерология ========
+const LIFE={1:['Лидер','Независимость и сила воли. Ты рождён идти первым.'],2:['Дипломат','Чуткость и партнёрство, умение объединять людей.'],
+ 3:['Творец','Общение, творчество, обаяние и лёгкость.'],4:['Строитель','Надёжность и порядок. Всё, что ты строишь, — надолго.'],
+ 5:['Искатель свободы','Перемены, путешествия, жажда нового.'],6:['Хранитель','Любовь, семья, забота. Рядом с тобой тепло.'],
+ 7:['Мудрец','Интуиция и глубина. Видишь то, что скрыто.'],8:['Управленец','Деньги, власть, результат.'],9:['Гуманист','Мудрость и сострадание, путь помощи людям.'],
+ 11:['Вдохновитель','Мастер-число: сильнейшая интуиция, ведёшь других к свету.'],22:['Архитектор','Мастер-число: воплощаешь большие мечты в реальность.']};
+const PYEAR={1:['Год начал','Старт нового цикла, смелые решения.'],2:['Год партнёрства','Отношения, союзы, терпение.'],3:['Год самовыражения','Творчество, общение, радость.'],
+ 4:['Год фундамента','Труд и порядок, основа на годы вперёд.'],5:['Год перемен','Переезды, свобода, неожиданные повороты.'],6:['Год любви и семьи','Дом, близкие, сердечные события.'],
+ 7:['Год внутреннего роста','Учёба, осмысление, интуиция.'],8:['Год денег и успеха','Карьера, доход, результаты.'],9:['Год завершений','Отпускаешь старое, подводишь итоги.']};
+const ZOD=[[1,19,'Козерог','♑'],[2,18,'Водолей','♒'],[3,20,'Рыбы','♓'],[4,19,'Овен','♈'],[5,20,'Телец','♉'],[6,20,'Близнецы','♊'],[7,22,'Рак','♋'],[8,22,'Лев','♌'],[9,22,'Дева','♍'],[10,22,'Весы','♎'],[11,21,'Скорпион','♏'],[12,21,'Стрелец','♐']];
+const dsum=n=>String(n).split('').reduce((a,b)=>a+(+b||0),0);
+const parse=v=>{if(!v)return null;const [y,m,d]=v.split('-').map(Number);if(!y||new Date(y,m-1,d)>new Date())return null;return{d,mo:m,y,str:String(d).padStart(2,'0')+'.'+String(m).padStart(2,'0')+'.'+y}};
+const lifePath=p=>{let s=dsum(''+p.d+p.mo+p.y);while(s>9&&s!==11&&s!==22)s=dsum(s);return s};
+const pYear=p=>{let s=dsum(p.d)+dsum(p.mo)+dsum(Y);while(s>9)s=dsum(s);return s};
+const arcIdx=n=>{while(n>22)n-=22;return n===22?0:n};
+const zodiac=(d,mo)=>{const z=ZOD[mo-1];return d<=z[1]?z:ZOD[mo%12]};
+const tile=(l,v,info)=>`<div class="nt"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${info[0]}</div><div class="d">${info[1]}</div></div>`;
+function arcanaBlock(list){
+  return `<div class="cards n${list.length}">${list.map(([c,l])=>cardHTML({...c,reversed:false},l)).join('')}</div>
+    <div class="reading">${list.map(([c,l])=>`<div class="item"><div class="h">${l}</div><div class="n">${c.sym} ${c.name}</div><div class="t">${c.up}</div></div>`).join('')}</div>`;
+}
+function openAll(box){box.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>{c.classList.add('open');haptic()},400+i*500))}
+$('#nGo').onclick=()=>{
+  const p=parse($('#nDate').value);if(!p){$('#nOut').innerHTML='<p class="hint">Выбери дату рождения 👆</p>';return}
+  haptic('medium');const lp=lifePath(p),py=pYear(p),z=zodiac(p.d,p.mo);
+  const out=$('#nOut');
+  out.innerHTML=`<p class="zod">${z[3]} ${z[2]} · ${p.str}</p><div class="tiles">${tile('Число судьбы',lp,LIFE[lp])}${tile('Личный '+Y+' год',py,PYEAR[py])}</div>`+
+    arcanaBlock([[DECK[arcIdx(p.d)],'Аркан личности'],[DECK[arcIdx(p.d+p.mo+dsum(Y))],'Аркан '+Y+' года']]);
+  openAll(out);
+};
+// ======== совместимость ========
+const ELEM={'Овен':'f','Лев':'f','Стрелец':'f','Телец':'e','Дева':'e','Козерог':'e','Близнецы':'a','Весы':'a','Водолей':'a','Рак':'w','Скорпион':'w','Рыбы':'w'};
+const red9=n=>{while(n>9)n=dsum(n);return n};
+function score(p1,p2){
+  const a=red9(lifePath(p1)),b=red9(lifePath(p2)),g=n=>[1,5,7].includes(n)?0:[2,4,8].includes(n)?1:2;
+  const num=a===b?85:g(a)===g(b)?92:65+(a*b)%13;
+  const e1=ELEM[zodiac(p1.d,p1.mo)[2]],e2=ELEM[zodiac(p2.d,p2.mo)[2]];
+  const zod=e1===e2?92:/^(fa|af|ew|we)$/.test(e1+e2)?85:62;
+  return Math.max(48,Math.min(99,Math.round(num*.55+zod*.45)+(p1.d+p2.d+p1.mo+p2.mo)%7-3));
+}
+const verdict=p=>p>=88?'Союз судьбы 💞':p>=80?'Сильная связь ✨':p>=72?'Хорошая пара — есть над чем поработать':p>=65?'Притяжение противоположностей 🔥':'Непростой, но очень важный союз';
+$('#cGo').onclick=()=>{
+  const p1=parse($('#cD1').value),p2=parse($('#cD2').value);
+  if(!p1||!p2){$('#cOut').innerHTML='<p class="hint">Выбери обе даты 👆</p>';return}
+  haptic('medium');const pct=score(p1,p2),z1=zodiac(p1.d,p1.mo),z2=zodiac(p2.d,p2.mo);
+  let n=p1.d;while(n>22)n-=22;let m=p2.d;while(m>22)m-=22;
+  const out=$('#cOut');
+  out.innerHTML=`<p class="zod">${z1[3]} ${z1[2]} + ${z2[3]} ${z2[2]}</p>
+    <div class="meter"><div class="pct" id="pct">0%</div><div class="bar"><i id="pbar"></i></div><div class="vt">${verdict(pct)}</div></div>`+
+    arcanaBlock([[DECK[arcIdx(n+m)],'Аркан вашей пары']]);
+  setTimeout(()=>{$('#pbar').style.width=pct+'%';const t0=performance.now();
+    (function tick(t){const k=Math.min(1,(t-t0)/2400),e=1-Math.pow(1-k,3);const el=$('#pct');if(!el)return;el.textContent=Math.round(pct*e)+'%';if(k<1)requestAnimationFrame(tick);else try{TG&&TG.HapticFeedback.notificationOccurred('success')}catch(_){}})(t0)},200);
+  openAll(out);
+};
+
+// ======== ссылки, приветствие ========
+if(CHANNEL_URL)$('#links').insertAdjacentHTML('beforeend',`<a class="btn ghost" id="lCh" href="${esc(CHANNEL_URL)}">📢 Наш канал</a>`);
+if(CONTACT_URL)$('#links').insertAdjacentHTML('beforeend',`<a class="btn" id="lCo" href="${esc(CONTACT_URL)}">💌 Личный разбор от таролога</a>`);
+document.querySelectorAll('#links a').forEach(a=>a.onclick=e=>{if(TG&&/^https:\/\/t\.me\//.test(a.href)){e.preventDefault();TG.openTelegramLink(a.href)}});
+if(user&&user.first_name)$('#hello').textContent=`Привет, ${user.first_name}! Выбери расклад — карты ждут тебя`;
+
+// ======== звёзды и снег ========
+(()=>{let h='';for(let i=0;i<70;i++){const z=Math.random()*2+1;h+=`<i style="left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;animation-delay:${(Math.random()*4).toFixed(2)}s"></i>`}$('#stars').innerHTML=h})();
+(()=>{const cv=$('#snow'),x=cv.getContext('2d');let W,H,f=[];
+  const size=()=>{const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;x.setTransform(d,0,0,d,0,0)};size();addEventListener('resize',size);
+  for(let i=0;i<60;i++)f.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*2+.6,v:Math.random()*.5+.3,p:Math.random()*6});
+  (function loop(){x.clearRect(0,0,W,H);x.fillStyle='rgba(255,255,255,.7)';
+    for(const s of f){s.y+=s.v;s.p+=.01;s.x+=Math.sin(s.p)*.3;if(s.y>H+5){s.y=-5;s.x=Math.random()*W}x.beginPath();x.arc(s.x,s.y,s.r,0,6.283);x.fill()}
+    requestAnimationFrame(loop)})();
+})();
+</script>
+</body>
+</html>
